@@ -1,17 +1,15 @@
 from http.server import BaseHTTPRequestHandler
 import cgi
-import io
-from rembg import remove
-from PIL import Image
-
+import urllib.request
+import urllib.parse
+import os
 
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
-        # Parse multipart form data
         content_type = self.headers.get('Content-Type', '')
         if 'multipart/form-data' not in content_type:
-            self._error(400, 'multipart/form-data 형식으로 보내주세요')
+            self._error(400, '이미지를 multipart/form-data로 보내주세요')
             return
 
         try:
@@ -31,32 +29,44 @@ class handler(BaseHTTPRequestHandler):
             file_item = form['image']
             image_data = file_item.file.read()
 
-            if len(image_data) > 20 * 1024 * 1024:
-                self._error(413, '20MB 이하 파일만 가능합니다')
+            api_key = os.environ.get('REMOVE_BG_API_KEY', '')
+            if not api_key:
+                self._error(500, 'API 키가 설정되지 않았습니다')
                 return
 
-            # Open and validate image
-            try:
-                img = Image.open(io.BytesIO(image_data))
-                img.verify()
-                img = Image.open(io.BytesIO(image_data))
-            except Exception:
-                self._error(400, '유효하지 않은 이미지 파일입니다')
-                return
+            boundary = b'----FormBoundary'
+            body = (
+                b'------FormBoundary\r\n'
+                b'Content-Disposition: form-data; name="image_file"; filename="image.png"\r\n'
+                b'Content-Type: image/png\r\n\r\n' +
+                image_data +
+                b'\r\n------FormBoundary\r\n'
+                b'Content-Disposition: form-data; name="size"\r\n\r\n'
+                b'auto\r\n'
+                b'------FormBoundary--\r\n'
+            )
 
-            # Remove background using rembg (U2Net model)
-            output = remove(image_data)
+            req = urllib.request.Request(
+                'https://api.remove.bg/v1.0/removebg',
+                data=body,
+                headers={
+                    'X-Api-Key': api_key,
+                    'Content-Type': 'multipart/form-data; boundary=----FormBoundary',
+                }
+            )
 
-            # Return PNG with transparent background
+            with urllib.request.urlopen(req) as resp:
+                result = resp.read()
+
             self.send_response(200)
             self.send_header('Content-Type', 'image/png')
-            self.send_header('Content-Length', str(len(output)))
+            self.send_header('Content-Length', str(len(result)))
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(output)
+            self.wfile.write(result)
 
         except Exception as e:
-            self._error(500, f'처리 중 오류가 발생했습니다: {str(e)}')
+            self._error(500, f'오류: {str(e)}')
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -76,4 +86,4 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, format, *args):
-        pass  # suppress default logging
+        pass
