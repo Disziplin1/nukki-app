@@ -1,29 +1,13 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "api/remove.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/remove",
-      "dest": "/api/remove.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "functions": {
-    "api/remove.py": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  }
+    "version": 2,
+    "routes": [
+        {
+            "src": "/api/remove",
+            "dest": "/api/remove.py"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/index.html"
+        }
+    ]
 }
