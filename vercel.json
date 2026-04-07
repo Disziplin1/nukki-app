@@ -1,23 +1,13 @@
 {
-    "version": 2,
-    "buildCommand": null,
-    "outputDirectory": null,
-    "framework": null,
-    "functions": {
-        "api/remove.py": {
-            "runtime": "python3.9",
-            "maxDuration": 60,
-            "memory": 1024
-        }
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/remove",
+      "dest": "/api/remove.py"
     },
-    "routes": [
-        {
-            "src": "/api/remove",
-            "dest": "/api/remove.py"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/index.html"
-        }
-    ]
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
