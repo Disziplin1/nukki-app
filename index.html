@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>누끼 — 무료 배경 제거</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --border-hover: #444;
+    --text: #f0f0f0;
+    --text-muted: #777;
+    --text-dim: #444;
+    --accent: #d4f03c;
+    --accent-dim: #b8d432;
+    --accent-text: #0e0e0e;
+    --danger: #ff5f5f;
+    --radius: 10px;
+    --font-sans: 'Noto Sans KR', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  header {
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .logo span { color: var(--text-muted); }
+  .badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  /* Main layout */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 60px 24px 80px;
+    gap: 40px;
+  }
+
+  .hero {
+    text-align: center;
+    max-width: 480px;
+  }
+  .hero h1 {
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    margin-bottom: 14px;
+  }
+  .hero h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+  .hero p {
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* Upload zone */
+  .upload-card {
+    width: 100%;
+    max-width: 580px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  #drop-zone {
+    position: relative;
+    padding: 52px 40px;
+    text-align: center;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  #drop-zone:hover { background: var(--surface2); }
+  #drop-zone.drag-over {
+    background: rgba(212, 240, 60, 0.05);
+    border-color: var(--accent);
+  }
+  #drop-zone input {
+    position: absolute; inset: 0; opacity: 0;
+    cursor: pointer; width: 100%; height: 100%;
+  }
+  .upload-icon {
+    width: 44px; height: 44px;
+    border: 1.5px solid var(--border-hover);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    color: var(--text-muted);
+    font-size: 20px;
+  }
+  .upload-title {
+    font-size: 15px;
+    font-weight: 500;
+    margin-bottom: 6px;
+  }
+  .upload-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* Preview in upload zone */
+  .preview-upload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .preview-upload img {
+    max-height: 140px;
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    object-fit: contain;
+  }
+  .preview-upload .file-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Options row */
+  .options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .opt-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .fmt-group {
+    display: flex;
+    gap: 6px;
+  }
+  .fmt-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .fmt-btn:hover { border-color: var(--border-hover); color: var(--text); }
+  .fmt-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+    font-weight: 500;
+  }
+
+  /* Run button */
+  .run-wrap {
+    padding: 0 20px 20px;
+  }
+  #run-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: var(--accent-text);
+    border: none;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    letter-spacing: 0.01em;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  #run-btn:hover:not(:disabled) { background: var(--accent-dim); }
+  #run-btn:disabled { opacity: 0.35; cursor: default; }
+
+  /* Status */
+  #status-bar {
+    width: 100%;
+    max-width: 580px;
+    min-height: 20px;
+  }
+  .status-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid var(--border-hover);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err-text { color: var(--danger); }
+
+  /* Progress bar */
+  .progress-wrap {
+    width: 100%;
+    max-width: 580px;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 0.4s ease;
+  }
+
+  /* Results */
+  #results {
+    width: 100%;
+    max-width: 580px;
+    display: none;
+  }
+  .results-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    margin-bottom: 12px;
+  }
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .result-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-format {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+  .result-size {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .result-img-wrap {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 160px;
+    background-image: repeating-conic-gradient(#ffffff08 0% 25%, transparent 0% 50%);
+    background-size: 16px 16px;
+  }
+  .result-img-wrap.white-bg {
+    background: #fff;
+    background-image: none;
+  }
+  .result-img-wrap img {
+    max-width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+    border-radius: 6px;
+  }
+  .dl-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 12px 12px;
+    padding: 9px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.12s;
+  }
+  .dl-btn:hover { background: var(--surface2); border-color: var(--border-hover); }
+
+  /* Footer */
+  footer {
+    padding: 20px 40px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 20px; }
+    main { padding: 40px 16px 60px; }
+    #drop-zone { padding: 40px 20px; }
+    .options-row { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">nukki<span>.app</span></div>
+  <div class="badge">FREE · NO SIGNUP</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>배경 제거,<br><em>원본 화질</em> 그대로</h1>
+    <p>가입 없이 무료로 사용하세요.<br>딥러닝 AI가 원본 해상도 그대로 누끼를 따줍니다.</p>
+  </div>
+
+  <div class="upload-card">
+    <div id="drop-zone">
+      <input type="file" id="file-in" accept="image/*">
+      <div class="upload-icon">↑</div>
+      <div class="upload-title">이미지를 여기에 드래그하거나 클릭하세요</div>
+      <div class="upload-sub">JPG · PNG · WEBP · 최대 20MB</div>
+    </div>
+
+    <div class="options-row">
+      <div class="opt-label">출력 형식</div>
+      <div class="fmt-group">
+        <button class="fmt-btn active" id="btn-png" onclick="setFmt('png')">PNG 투명</button>
+        <button class="fmt-btn" id="btn-jpg" onclick="setFmt('jpg')">JPG 흰배경</button>
+        <button class="fmt-btn" id="btn-both" onclick="setFmt('both')">둘 다</button>
+      </div>
+    </div>
+
+    <div class="run-wrap">
+      <button id="run-btn" disabled onclick="runRemove()">
+        <span id="btn-text">배경 제거 실행</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="progress-wrap" id="progress-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <div id="status-bar"></div>
+
+  <div id="results">
+    <div class="results-label">// RESULT</div>
+    <div class="result-grid" id="result-grid"></div>
+  </div>
+</main>
+
+<footer>
+  powered by rembg · u2net model · runs on vercel
+</footer>
+
+<script>
+let currentFile = null;
+let currentFmt = 'png';
+let originalDataUrl = null;
+
+// Drag & drop
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type.startsWith('image/')) loadFile(f);
+});
+document.getElementById('file-in').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+function loadFile(f) {
+  if (f.size > 20 * 1024 * 1024) { setStatus('20MB 이하 파일만 가능합니다', true); return; }
+  currentFile = f;
+  const reader = new FileReader();
+  reader.onload = e => {
+    originalDataUrl = e.target.result;
+    dropZone.innerHTML = `
+      <input type="file" id="file-in" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%">
+      <div class="preview-upload">
+        <img src="${originalDataUrl}" alt="preview">
+        <div class="file-name">${f.name} · ${(f.size/1024/1024).toFixed(2)}MB</div>
+      </div>`;
+    document.getElementById('file-in').addEventListener('change', e => {
+      if (e.target.files[0]) loadFile(e.target.files[0]);
+    });
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('results').style.display = 'none';
+    setStatus('');
+  };
+  reader.readAsDataURL(f);
+}
+
+function setFmt(v) {
+  currentFmt = v;
+  ['png','jpg','both'].forEach(k => document.getElementById('btn-'+k).classList.toggle('active', k===v));
+}
+
+function setStatus(msg, isErr) {
+  const bar = document.getElementById('status-bar');
+  if (!msg) { bar.innerHTML = ''; return; }
+  bar.innerHTML = `<div class="status-inner">
+    ${isErr ? '' : '<div class="spinner"></div>'}
+    <span class="${isErr ? 'err-text' : ''}">${msg}</span>
+  </div>`;
+}
+
+function setProgress(pct) {
+  const wrap = document.getElementById('progress-wrap');
+  const bar = document.getElementById('progress-bar');
+  wrap.style.display = pct > 0 ? 'block' : 'none';
+  bar.style.width = pct + '%';
+}
+
+async function runRemove() {
+  if (!currentFile) return;
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  document.getElementById('results').style.display = 'none';
+  setStatus('AI 모델 로드 중...');
+  setProgress(15);
+
+  try {
+    const formData = new FormData();
+    formData.append('image', currentFile);
+
+    setStatus('배경 분석 중...');
+    setProgress(40);
+
+    const resp = await fetch('/api/remove', {
+      method: 'POST',
+      body: formData
+    });
+
+    setProgress(80);
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: '서버 오류가 발생했습니다' }));
+      throw new Error(err.error || '서버 오류');
+    }
+
+    setStatus('결과 생성 중...');
+    setProgress(95);
+
+    const blob = await resp.blob();
+    const pngUrl = URL.createObjectURL(blob);
+
+    setProgress(100);
+    setTimeout(() => setProgress(0), 500);
+
+    renderResults(pngUrl, blob);
+    setStatus('');
+
+  } catch(e) {
+    setStatus('오류: ' + e.message, true);
+    setProgress(0);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function renderResults(pngUrl, pngBlob) {
+  const grid = document.getElementById('result-grid');
+  grid.innerHTML = '';
+
+  const img = new Image();
+  img.src = pngUrl;
+  await new Promise(r => img.onload = r);
+
+  const fmts = currentFmt === 'both' ? ['png','jpg'] : [currentFmt];
+
+  for (const fmt of fmts) {
+    let finalUrl = pngUrl;
+    let sizeText = formatBytes(pngBlob.size);
+
+    if (fmt === 'jpg') {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      finalUrl = canvas.toDataURL('image/jpeg', 0.95);
+      const approxSize = Math.round(pngBlob.size * 0.4);
+      sizeText = formatBytes(approxSize);
+    }
+
+    const W = img.naturalWidth, H = img.naturalHeight;
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="result-card-header">
+        <span class="result-format">${fmt.toUpperCase()}</span>
+        <span class="result-size">${W}×${H} · ${sizeText}</span>
+      </div>
+      <div class="result-img-wrap ${fmt==='jpg' ? 'white-bg' : ''}">
+        <img src="${finalUrl}" alt="result">
+      </div>
+      <a class="dl-btn" href="${finalUrl}" download="nukki_${Date.now()}.${fmt}">
+        ↓ 다운로드 (.${fmt})
+      </a>`;
+    grid.appendChild(card);
+  }
+
+  document.getElementById('results').style.display = 'block';
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(0) + 'KB';
+  return (bytes/1024/1024).toFixed(1) + 'MB';
+}
+</script>
+</body>
+</html>
