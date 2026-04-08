@@ -520,7 +520,9 @@ async function runRemove() {
     setStatus('결과 생성 중...');
     setProgress(85);
 
-    const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+    // output shape: [1, 1, H, W] → [H, W] after sigmoid → scale to 0-255
+    const maskTensor = output[0][0].sigmoid().mul(255).to('uint8');
+    const mask = await RawImage.fromTensor(maskTensor).resize(image.width, image.height);
 
     const canvas = document.createElement('canvas');
     canvas.width = image.width;
@@ -538,7 +540,9 @@ async function runRemove() {
     }
     ctx.putImageData(imgData, 0, 0);
 
-    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    const blob = await new Promise((resolve, reject) =>
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('이미지 변환 실패')), 'image/png')
+    );
     const pngUrl = URL.createObjectURL(blob);
 
     setProgress(100);
