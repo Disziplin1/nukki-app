@@ -400,20 +400,6 @@
         <button class="fmt-btn" id="btn-both" onclick="setFmt('both')">둘 다</button>
       </div>
     </div>
-    <div class="options-row" style="border-top:1px solid var(--border);">
-      <div class="opt-label">파일명</div>
-      <input id="filename-input" type="text" placeholder="nukki_result" style="
-        background: transparent;
-        border: 1px solid var(--border);
-        border-radius: 20px;
-        color: var(--text);
-        font-family: var(--font-mono);
-        font-size: 12px;
-        padding: 6px 14px;
-        outline: none;
-        width: 200px;
-      ">
-    </div>
 
     <div class="run-wrap">
       <button id="run-btn" disabled onclick="runRemove()">
@@ -536,9 +522,14 @@ async function runRemove() {
     setStatus('결과 생성 중...');
     setProgress(85);
 
-    // output shape: [1, 1, H, W] → sigmoid → [H, W] uint8
-    const raw = output[0][0].sigmoid().mul(255).to('uint8');
-    const mask = new RawImage(raw.data, raw.dims[1], raw.dims[0], 1);
+    // output shape: [1, 1, H, W] → sigmoid → 0~1 float → 0~255 uint8
+    const sigmoidOut = output[0][0].sigmoid();
+    const h = sigmoidOut.dims[0], w = sigmoidOut.dims[1];
+    const maskUint8 = new Uint8ClampedArray(sigmoidOut.data.length);
+    for (let i = 0; i < sigmoidOut.data.length; i++) {
+      maskUint8[i] = Math.round(sigmoidOut.data[i] * 255);
+    }
+    const mask = new RawImage(maskUint8, w, h, 1);
     const resized = await mask.resize(image.width, image.height);
 
     const imgEl = new Image();
@@ -613,7 +604,7 @@ async function renderResults(pngUrl, pngBlob) {
       <div class="result-img-wrap ${fmt==='jpg' ? 'white-bg' : ''}">
         <img src="${finalUrl}" alt="result">
       </div>
-      <a class="dl-btn" href="${finalUrl}" download="${(document.getElementById('filename-input').value.trim() || 'nukki_result')}.${fmt}">
+      <a class="dl-btn" href="${finalUrl}" download="${currentFile.name.replace(/\.[^.]+$/, '')}.${fmt}">
         ↓ 다운로드 (.${fmt})
       </a>`;
     grid.appendChild(card);
