@@ -421,10 +421,12 @@
 </main>
 
 <footer>
-  powered by rembg · u2net model · runs on vercel
+  powered by @imgly/background-removal · runs in browser · no server needed
 </footer>
 
-<script>
+<script type="module">
+import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm';
+
 let currentFile = null;
 let currentFmt = 'png';
 let originalDataUrl = null;
@@ -490,36 +492,26 @@ async function runRemove() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   document.getElementById('results').style.display = 'none';
-  setStatus('AI 모델 로드 중...');
-  setProgress(15);
+  setStatus('AI 모델 로드 중... (첫 실행 시 10~20초 소요)');
+  setProgress(5);
 
   try {
-    const formData = new FormData();
-    formData.append('image', currentFile);
+    const config = {
+      progress: (key, current, total) => {
+        if (total > 0) {
+          const pct = Math.round((current / total) * 100);
+          setProgress(Math.min(pct, 95));
+          if (key.includes('fetch')) setStatus('AI 모델 다운로드 중...');
+          else setStatus('배경 제거 중...');
+        }
+      }
+    };
 
-    setStatus('배경 분석 중...');
-    setProgress(40);
-
-    const resp = await fetch('/api/remove', {
-      method: 'POST',
-      body: formData
-    });
-
-    setProgress(80);
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({ error: '서버 오류가 발생했습니다' }));
-      throw new Error(err.error || '서버 오류');
-    }
-
-    setStatus('결과 생성 중...');
-    setProgress(95);
-
-    const blob = await resp.blob();
+    const blob = await removeBackground(currentFile, config);
     const pngUrl = URL.createObjectURL(blob);
 
     setProgress(100);
-    setTimeout(() => setProgress(0), 500);
+    setTimeout(() => setProgress(0), 600);
 
     renderResults(pngUrl, blob);
     setStatus('');
