@@ -643,9 +643,21 @@ function updateCreditsBadge(credits) {
   badge.style.color = Number(credits) <= 5 ? '#ff5f5f' : '';
 }
 
-// 페이지 로드 시 localStorage에서 불러오기
-const saved = localStorage.getItem('credits');
-if (saved !== null) updateCreditsBadge(saved);
+// 페이지 로드 시 서버에서 정확한 잔여 횟수 가져오기
+async function loadCredits() {
+  try {
+    const resp = await fetch('/api/credits');
+    if (!resp.ok) return;
+    const { credits } = await resp.json();
+    localStorage.setItem('credits', credits);
+    updateCreditsBadge(credits);
+  } catch(e) {
+    // 실패하면 localStorage 값으로 대체
+    const saved = localStorage.getItem('credits');
+    if (saved !== null) updateCreditsBadge(saved);
+  }
+}
+loadCredits();
 </script>
 </body>
 </html>
