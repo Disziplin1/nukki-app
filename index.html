@@ -454,7 +454,7 @@
 </main>
 
 <footer>
-  powered by briaai/RMBG-1.4 · transformers.js · runs in browser
+  powered by remove.bg API
 </footer>
 
 <script type="module">
@@ -533,72 +533,30 @@ function setProgress(pct) {
   bar.style.width = pct + '%';
 }
 
-let _model = null;
-let _processor = null;
-
-async function loadModel() {
-  if (_model) return;
-  const { AutoProcessor, AutoModel, RawImage, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
-  env.allowRemoteModels = true;
-  env.backends.onnx.wasm.numThreads = 1;
-  _processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4');
-  _model = await AutoModel.from_pretrained('briaai/RMBG-1.4', { dtype: 'fp32' });
-}
-
 async function runRemove() {
   if (!currentFile) return;
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   document.getElementById('results').style.display = 'none';
-  setStatus('AI 모델 로드 중... (첫 실행만 20~40초)');
-  setProgress(10);
+  setStatus('배경 분석 중...');
+  setProgress(30);
 
   try {
-    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
-    await loadModel();
+    const formData = new FormData();
+    formData.append('image', currentFile);
 
-    setStatus('배경 제거 중...');
-    setProgress(40);
+    const resp = await fetch('/api/remove', { method: 'POST', body: formData });
+    setProgress(80);
 
-    const objUrl = URL.createObjectURL(currentFile);
-    const image = await RawImage.fromURL(objUrl);
-    const { pixel_values } = await _processor(image);
-
-    setProgress(65);
-    const { output } = await _model({ input: pixel_values });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: '서버 오류' }));
+      throw new Error(err.error);
+    }
 
     setStatus('결과 생성 중...');
-    setProgress(85);
+    setProgress(95);
 
-    // output shape: [1, 1, H, W] → sigmoid → 0~1 float → 0~255 uint8
-    const sigmoidOut = output[0][0].sigmoid();
-    const h = sigmoidOut.dims[0], w = sigmoidOut.dims[1];
-    const maskUint8 = new Uint8ClampedArray(sigmoidOut.data.length);
-    for (let i = 0; i < sigmoidOut.data.length; i++) {
-      maskUint8[i] = Math.round(sigmoidOut.data[i] * 255);
-    }
-    const mask = new RawImage(maskUint8, w, h, 1);
-    const resized = await mask.resize(image.width, image.height);
-
-    const imgEl = new Image();
-    imgEl.src = objUrl;
-    await new Promise(r => imgEl.onload = r);
-
-    const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(imgEl, 0, 0);
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < resized.data.length; ++i) {
-      imgData.data[4 * i + 3] = resized.data[i];
-    }
-    ctx.putImageData(imgData, 0, 0);
-
-    const blob = await new Promise((resolve, reject) =>
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('이미지 변환 실패')), 'image/png')
-    );
+    const blob = await resp.blob();
     const pngUrl = URL.createObjectURL(blob);
 
     setProgress(100);
