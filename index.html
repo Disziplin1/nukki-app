@@ -421,7 +421,7 @@
 </main>
 
 <footer>
-  powered by @imgly/background-removal · runs in browser · no server needed
+  powered by briaai/RMBG-1.4 · transformers.js · runs in browser
 </footer>
 
 <script type="module">
@@ -485,30 +485,60 @@ function setProgress(pct) {
   bar.style.width = pct + '%';
 }
 
+let _processor = null;
+let _model = null;
+
+async function loadModel(onProgress) {
+  if (_model) return;
+  const { AutoProcessor, AutoModel, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
+  env.allowRemoteModels = true;
+  const modelId = 'briaai/RMBG-1.4';
+  onProgress('모델 로드 중... (첫 실행 시 30~60초 소요)');
+  _processor = await AutoProcessor.from_pretrained(modelId);
+  _model = await AutoModel.from_pretrained(modelId, { dtype: 'q8' });
+}
+
 async function runRemove() {
   if (!currentFile) return;
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   document.getElementById('results').style.display = 'none';
-  setStatus('AI 모델 로드 중... (첫 실행 시 10~20초 소요)');
   setProgress(5);
 
   try {
-    const { removeBackground } = await import('https://cdn.img.ly/packages/imgly/background-removal-js/1.4.5/dist/background-removal.js');
+    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
 
-    const config = {
-      publicPath: 'https://cdn.img.ly/packages/imgly/background-removal-js/1.4.5/dist/',
-      progress: (key, current, total) => {
-        if (total > 0) {
-          const pct = Math.round((current / total) * 100);
-          setProgress(Math.min(pct, 95));
-          if (key.includes('fetch')) setStatus('AI 모델 다운로드 중...');
-          else setStatus('배경 제거 중...');
-        }
-      }
-    };
+    await loadModel(msg => { setStatus(msg); setProgress(20); });
 
-    const blob = await removeBackground(currentFile, config);
+    setStatus('배경 분석 중...');
+    setProgress(50);
+
+    const image = await RawImage.fromBlob(currentFile);
+    const { pixel_values } = await _processor(image);
+    const { output } = await _model({ input: pixel_values });
+
+    setStatus('결과 생성 중...');
+    setProgress(85);
+
+    const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext('2d');
+
+    const imgEl = new Image();
+    imgEl.src = URL.createObjectURL(currentFile);
+    await new Promise(r => imgEl.onload = r);
+    ctx.drawImage(imgEl, 0, 0);
+
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < mask.data.length; ++i) {
+      imgData.data[4 * i + 3] = mask.data[i];
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     const pngUrl = URL.createObjectURL(blob);
 
     setProgress(100);
