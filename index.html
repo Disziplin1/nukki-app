@@ -363,6 +363,34 @@
     font-family: var(--font-mono);
   }
 
+  /* 전체화면 드래그 오버레이 */
+  #global-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(212, 240, 60, 0.07);
+    border: 3px dashed var(--accent);
+    z-index: 999;
+    pointer-events: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #global-overlay.visible {
+    display: flex;
+  }
+  #global-overlay .ol-icon {
+    font-size: 48px;
+    opacity: 0.8;
+  }
+  #global-overlay .ol-text {
+    font-family: var(--font-mono);
+    font-size: 16px;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+  }
+
   @media (max-width: 600px) {
     header { padding: 20px; }
     main { padding: 40px 16px 60px; }
@@ -372,6 +400,11 @@
 </style>
 </head>
 <body>
+
+<div id="global-overlay">
+  <div class="ol-icon">↓</div>
+  <div class="ol-text">여기에 놓으세요</div>
+</div>
 
 <header>
   <div class="logo">nukki<span>.app</span></div>
@@ -429,15 +462,30 @@ let currentFile = null;
 let currentFmt = 'png';
 let originalDataUrl = null;
 
-// Drag & drop
-const dropZone = document.getElementById('drop-zone');
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault(); dropZone.classList.remove('drag-over');
+// 전체화면 드래그앤드롭
+let dragCounter = 0;
+const globalOverlay = document.getElementById('global-overlay');
+
+document.addEventListener('dragenter', e => {
+  e.preventDefault();
+  dragCounter++;
+  globalOverlay.classList.add('visible');
+});
+document.addEventListener('dragleave', e => {
+  dragCounter--;
+  if (dragCounter <= 0) { dragCounter = 0; globalOverlay.classList.remove('visible'); }
+});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  dragCounter = 0;
+  globalOverlay.classList.remove('visible');
   const f = e.dataTransfer.files[0];
   if (f && f.type.startsWith('image/')) loadFile(f);
 });
+
+// 드롭존 클릭용
+const dropZone = document.getElementById('drop-zone');
 document.getElementById('file-in').addEventListener('change', e => {
   if (e.target.files[0]) loadFile(e.target.files[0]);
 });
