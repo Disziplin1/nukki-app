@@ -485,17 +485,14 @@ function setProgress(pct) {
   bar.style.width = pct + '%';
 }
 
-let _processor = null;
-let _model = null;
+let _pipe = null;
 
-async function loadModel(onProgress) {
-  if (_model) return;
-  const { AutoProcessor, AutoModel, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
+async function loadModel() {
+  if (_pipe) return;
+  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
   env.allowRemoteModels = true;
-  const modelId = 'briaai/RMBG-1.4';
-  onProgress('모델 로드 중... (첫 실행 시 30~60초 소요)');
-  _processor = await AutoProcessor.from_pretrained(modelId);
-  _model = await AutoModel.from_pretrained(modelId, { dtype: 'q8' });
+  env.backends.onnx.wasm.numThreads = 1;
+  _pipe = await pipeline('image-segmentation', 'briaai/RMBG-1.4', { dtype: 'q4' });
 }
 
 async function runRemove() {
@@ -503,40 +500,40 @@ async function runRemove() {
   const btn = document.getElementById('run-btn');
   btn.disabled = true;
   document.getElementById('results').style.display = 'none';
-  setProgress(5);
+  setStatus('AI 모델 로드 중... (첫 실행만 20~40초)');
+  setProgress(10);
 
   try {
-    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
+    await loadModel();
 
-    await loadModel(msg => { setStatus(msg); setProgress(20); });
-
-    setStatus('배경 분석 중...');
+    setStatus('배경 제거 중...');
     setProgress(50);
 
-    const image = await RawImage.fromBlob(currentFile);
-    const { pixel_values } = await _processor(image);
-    const { output } = await _model({ input: pixel_values });
+    const objUrl = URL.createObjectURL(currentFile);
+
+    // image-segmentation pipeline 사용
+    const result = await _pipe(objUrl);
+    const mask = result[0].mask; // RawImage (grayscale, 0~255)
+
+    const imgEl = new Image();
+    imgEl.src = objUrl;
+    await new Promise(r => imgEl.onload = r);
 
     setStatus('결과 생성 중...');
     setProgress(85);
 
-    // output shape: [1, 1, H, W] → [H, W] after sigmoid → scale to 0-255
-    const maskTensor = output[0][0].sigmoid().mul(255).to('uint8');
-    const mask = await RawImage.fromTensor(maskTensor).resize(image.width, image.height);
-
     const canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
+    canvas.width = imgEl.naturalWidth;
+    canvas.height = imgEl.naturalHeight;
     const ctx = canvas.getContext('2d');
-
-    const imgEl = new Image();
-    imgEl.src = URL.createObjectURL(currentFile);
-    await new Promise(r => imgEl.onload = r);
     ctx.drawImage(imgEl, 0, 0);
 
+    // mask를 원본 크기에 맞게 리사이즈
+    const resizedMask = await mask.resize(canvas.width, canvas.height);
+
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < mask.data.length; ++i) {
-      imgData.data[4 * i + 3] = mask.data[i];
+    for (let i = 0; i < resizedMask.data.length; ++i) {
+      imgData.data[4 * i + 3] = resizedMask.data[i];
     }
     ctx.putImageData(imgData, 0, 0);
 
@@ -547,7 +544,6 @@ async function runRemove() {
 
     setProgress(100);
     setTimeout(() => setProgress(0), 600);
-
     renderResults(pngUrl, blob);
     setStatus('');
 
