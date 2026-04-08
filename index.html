@@ -425,8 +425,6 @@
 </footer>
 
 <script type="module">
-import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm';
-
 let currentFile = null;
 let currentFmt = 'png';
 let originalDataUrl = null;
@@ -496,6 +494,8 @@ async function runRemove() {
   setProgress(5);
 
   try {
+    const { removeBackground } = await import('https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.5/+esm');
+
     const config = {
       progress: (key, current, total) => {
         if (total > 0) {
