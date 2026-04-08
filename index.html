@@ -485,14 +485,16 @@ function setProgress(pct) {
   bar.style.width = pct + '%';
 }
 
-let _pipe = null;
+let _model = null;
+let _processor = null;
 
 async function loadModel() {
-  if (_pipe) return;
-  const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
+  if (_model) return;
+  const { AutoProcessor, AutoModel, RawImage, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
   env.allowRemoteModels = true;
   env.backends.onnx.wasm.numThreads = 1;
-  _pipe = await pipeline('image-segmentation', 'briaai/RMBG-1.4', { dtype: 'q4' });
+  _processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4');
+  _model = await AutoModel.from_pretrained('briaai/RMBG-1.4', { dtype: 'fp16' });
 }
 
 async function runRemove() {
@@ -504,36 +506,40 @@ async function runRemove() {
   setProgress(10);
 
   try {
+    const { RawImage } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm');
     await loadModel();
 
     setStatus('배경 제거 중...');
-    setProgress(50);
+    setProgress(40);
 
     const objUrl = URL.createObjectURL(currentFile);
+    const image = await RawImage.fromURL(objUrl);
+    const { pixel_values } = await _processor(image);
 
-    // image-segmentation pipeline 사용
-    const result = await _pipe(objUrl);
-    const mask = result[0].mask; // RawImage (grayscale, 0~255)
+    setProgress(65);
+    const { output } = await _model({ input: pixel_values });
+
+    setStatus('결과 생성 중...');
+    setProgress(85);
+
+    // output shape: [1, 1, H, W] → sigmoid → [H, W] uint8
+    const raw = output[0][0].sigmoid().mul(255).to('uint8');
+    const mask = new RawImage(raw.data, raw.dims[1], raw.dims[0], 1);
+    const resized = await mask.resize(image.width, image.height);
 
     const imgEl = new Image();
     imgEl.src = objUrl;
     await new Promise(r => imgEl.onload = r);
 
-    setStatus('결과 생성 중...');
-    setProgress(85);
-
     const canvas = document.createElement('canvas');
-    canvas.width = imgEl.naturalWidth;
-    canvas.height = imgEl.naturalHeight;
+    canvas.width = image.width;
+    canvas.height = image.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(imgEl, 0, 0);
 
-    // mask를 원본 크기에 맞게 리사이즈
-    const resizedMask = await mask.resize(canvas.width, canvas.height);
-
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < resizedMask.data.length; ++i) {
-      imgData.data[4 * i + 3] = resizedMask.data[i];
+    for (let i = 0; i < resized.data.length; ++i) {
+      imgData.data[4 * i + 3] = resized.data[i];
     }
     ctx.putImageData(imgData, 0, 0);
 
