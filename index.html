@@ -494,10 +494,10 @@ async function runRemove() {
   setProgress(5);
 
   try {
-    const { removeBackground } = await import('https://esm.sh/@imgly/background-removal@1.4.5');
+    const { removeBackground } = await import('https://cdn.img.ly/packages/imgly/background-removal-js/1.4.5/dist/background-removal.js');
 
     const config = {
-      publicPath: 'https://esm.sh/@imgly/background-removal@1.4.5/dist/',
+      publicPath: 'https://cdn.img.ly/packages/imgly/background-removal-js/1.4.5/dist/',
       progress: (key, current, total) => {
         if (total > 0) {
           const pct = Math.round((current / total) * 100);
