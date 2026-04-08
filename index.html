@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>누끼 — 무료 배경 제거</title>
+<title>누끼따개</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -18,9 +18,9 @@
     --text: #f0f0f0;
     --text-muted: #777;
     --text-dim: #444;
-    --accent: #d4f03c;
-    --accent-dim: #b8d432;
-    --accent-text: #0e0e0e;
+    --accent: #a855f7;
+    --accent-dim: #9333ea;
+    --accent-text: #ffffff;
     --danger: #ff5f5f;
     --radius: 10px;
     --font-sans: 'Noto Sans KR', sans-serif;
@@ -403,11 +403,11 @@
 
 <div id="global-overlay">
   <div class="ol-icon">↓</div>
-  <div class="ol-text">여기에 놓으세요</div>
+  <div class="ol-text">놓으면 바로 업로드됩니다</div>
 </div>
 
 <header>
-  <div class="logo">nukki<span>.app</span></div>
+  <div class="logo">누끼<span>따개</span></div>
   <div style="display:flex;align-items:center;gap:10px;">
     <div class="badge" id="credits-badge" style="display:none"></div>
     <div class="badge">FREE · NO SIGNUP</div>
@@ -416,16 +416,16 @@
 
 <main>
   <div class="hero">
-    <h1>배경 제거,<br><em>원본 화질</em> 그대로</h1>
-    <p>가입 없이 무료로 사용하세요.<br>딥러닝 AI가 원본 해상도 그대로 누끼를 따줍니다.</p>
+    <h1>귀찮은 배경제거<br><em>그냥 여기서</em> 하세요</h1>
+    <p>그냥 사진 던져놓으면 알아서 따줌 ㅋ<br>가입 같은 거 없어요. 그냥 쓰면 됩니다.</p>
   </div>
 
   <div class="upload-card">
     <div id="drop-zone">
       <input type="file" id="file-in" accept="image/*">
       <div class="upload-icon">↑</div>
-      <div class="upload-title">이미지를 여기에 드래그하거나 클릭하세요</div>
-      <div class="upload-sub">JPG · PNG · WEBP · 최대 20MB</div>
+      <div class="upload-title">사진 여기다 놔두고 가세요</div>
+      <div class="upload-sub">JPG · PNG · WEBP · 20MB까지</div>
     </div>
 
     <div class="options-row">
@@ -439,7 +439,7 @@
 
     <div class="run-wrap">
       <button id="run-btn" disabled onclick="runRemove()">
-        <span id="btn-text">배경 제거 실행</span>
+        <span id="btn-text">누끼 따기</span>
       </button>
     </div>
   </div>
@@ -457,7 +457,7 @@
 </main>
 
 <footer>
-  powered by remove.bg API
+  혼자 만든 거라 버그 있을 수도 있음 ㅋ · remove.bg API 사용중
 </footer>
 
 <script type="module">
@@ -638,6 +638,20 @@ function formatBytes(bytes) {
 
 window.runRemove = runRemove;
 window.setFmt = setFmt;
+
+// 페이지 로드 시 잔여 횟수 조회
+async function loadCredits() {
+  try {
+    const resp = await fetch('/api/credits');
+    if (!resp.ok) return;
+    const { credits } = await resp.json();
+    const badge = document.getElementById('credits-badge');
+    badge.textContent = `잔여 ${credits}회`;
+    badge.style.display = 'block';
+    badge.style.color = credits <= 5 ? '#ff5f5f' : '';
+  } catch(e) {}
+}
+loadCredits();
 </script>
 </body>
 </html>
