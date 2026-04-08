@@ -53,11 +53,15 @@ class handler(BaseHTTPRequestHandler):
 
             with urllib.request.urlopen(req) as resp:
                 result = resp.read()
+                credits_remaining = resp.headers.get('X-Credits-Remaining', '')
 
             self.send_response(200)
             self.send_header('Content-Type', 'image/png')
             self.send_header('Content-Length', str(len(result)))
             self.send_header('Access-Control-Allow-Origin', '*')
+            if credits_remaining:
+                self.send_header('X-Credits-Remaining', credits_remaining)
+                self.send_header('Access-Control-Expose-Headers', 'X-Credits-Remaining')
             self.end_headers()
             self.wfile.write(result)
 

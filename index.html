@@ -408,7 +408,10 @@
 
 <header>
   <div class="logo">nukki<span>.app</span></div>
-  <div class="badge">FREE · NO SIGNUP</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="badge" id="credits-badge" style="display:none"></div>
+    <div class="badge">FREE · NO SIGNUP</div>
+  </div>
 </header>
 
 <main>
@@ -547,6 +550,14 @@ async function runRemove() {
 
     const resp = await fetch('/api/remove', { method: 'POST', body: formData });
     setProgress(80);
+
+    const credits = resp.headers.get('X-Credits-Remaining');
+    if (credits !== null) {
+      const badge = document.getElementById('credits-badge');
+      badge.textContent = `잔여 ${credits}회`;
+      badge.style.display = 'block';
+      badge.style.color = Number(credits) <= 5 ? '#ff5f5f' : '';
+    }
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({ error: '서버 오류' }));
