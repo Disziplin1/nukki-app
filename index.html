@@ -400,6 +400,20 @@
         <button class="fmt-btn" id="btn-both" onclick="setFmt('both')">둘 다</button>
       </div>
     </div>
+    <div class="options-row" style="border-top:1px solid var(--border);">
+      <div class="opt-label">파일명</div>
+      <input id="filename-input" type="text" placeholder="nukki_result" style="
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        color: var(--text);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        padding: 6px 14px;
+        outline: none;
+        width: 200px;
+      ">
+    </div>
 
     <div class="run-wrap">
       <button id="run-btn" disabled onclick="runRemove()">
@@ -494,7 +508,7 @@ async function loadModel() {
   env.allowRemoteModels = true;
   env.backends.onnx.wasm.numThreads = 1;
   _processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4');
-  _model = await AutoModel.from_pretrained('briaai/RMBG-1.4', { dtype: 'fp16' });
+  _model = await AutoModel.from_pretrained('briaai/RMBG-1.4', { dtype: 'fp32' });
 }
 
 async function runRemove() {
@@ -599,7 +613,7 @@ async function renderResults(pngUrl, pngBlob) {
       <div class="result-img-wrap ${fmt==='jpg' ? 'white-bg' : ''}">
         <img src="${finalUrl}" alt="result">
       </div>
-      <a class="dl-btn" href="${finalUrl}" download="nukki_${Date.now()}.${fmt}">
+      <a class="dl-btn" href="${finalUrl}" download="${(document.getElementById('filename-input').value.trim() || 'nukki_result')}.${fmt}">
         ↓ 다운로드 (.${fmt})
       </a>`;
     grid.appendChild(card);
