@@ -1,7 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 import cgi
 import urllib.request
-import urllib.parse
 import os
 
 class handler(BaseHTTPRequestHandler):
@@ -29,7 +28,7 @@ class handler(BaseHTTPRequestHandler):
             file_item = form['image']
             image_data = file_item.file.read()
 
-            api_key = os.environ.get('REMOVE_BG_API_KEY', '')
+            api_key = os.environ.get('CLIPDROP_API_KEY', '')
             if not api_key:
                 self._error(500, 'API 키가 설정되지 않았습니다')
                 return
@@ -40,17 +39,14 @@ class handler(BaseHTTPRequestHandler):
                 b'Content-Disposition: form-data; name="image_file"; filename="image.png"\r\n'
                 b'Content-Type: image/png\r\n\r\n' +
                 image_data +
-                b'\r\n------FormBoundary\r\n'
-                b'Content-Disposition: form-data; name="size"\r\n\r\n'
-                b'auto\r\n'
-                b'------FormBoundary--\r\n'
+                b'\r\n------FormBoundary--\r\n'
             )
 
             req = urllib.request.Request(
-                'https://api.remove.bg/v1.0/removebg',
+                'https://clipdrop-api.co/remove-background/v1',
                 data=body,
                 headers={
-                    'X-Api-Key': api_key,
+                    'x-api-key': api_key,
                     'Content-Type': 'multipart/form-data; boundary=----FormBoundary',
                 }
             )
